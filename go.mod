@@ -3,6 +3,8 @@ module github.com/bumbacea/k8s-sidecar
 go 1.21
 
 require (
+	github.com/avast/retry-go/v4 v4.5.1
+	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/joho/godotenv v1.5.1
 	github.com/kelseyhightower/envconfig v1.4.0
 	k8s.io/api v0.29.2

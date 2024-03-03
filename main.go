@@ -19,21 +19,6 @@ import (
 	"github.com/kelseyhightower/envconfig"
 )
 
-type ReqConfig struct {
-	ReqUrl                string `envconfig:"REQ_URL"`
-	ReqMethod             string `envconfig:"REQ_METHOD" default:"GET"`
-	ReqPayload            string `envconfig:"REQ_PAYLOAD"`
-	ReqRetryTotal         string `envconfig:"REQ_RETRY_TOTAL" default:"5"`
-	ReqRetryConnect       string `envconfig:"REQ_RETRY_CONNECT" default:"10"`
-	ReqRetryRead          string `envconfig:"REQ_RETRY_READ" default:"5"`
-	ReqRetryBackoffFactor string `envconfig:"REQ_RETRY_BACKOFF_FACTOR" default:"1.1"`
-	ReqTimeout            string `envconfig:"REQ_TIMEOUT" default:"10"`
-	ReqUsername           string `envconfig:"REQ_USERNAME"`
-	ReqPassword           string `envconfig:"REQ_PASSWORD"`
-	ReqBasicAuthEncoding  string `envconfig:"REQ_BASIC_AUTH_ENCODING" default:"latin1"`
-	ReqSkipTlsVerify      string `envconfig:"REQ_SKIP_TLS_VERIFY"`
-}
-
 type Config struct {
 	Label            string   `envconfig:"LABEL" required:"true"`
 	LabelValue       string   `envconfig:"LABEL_VALUE"`
@@ -122,7 +107,7 @@ func main() {
 			defaultFileMode:  config.DefaultFileMode,
 			folderAnnotation: config.FolderAnnotation,
 			callback: func() {
-				log.Printf("callback called on cm")
+				runCallback(config.Req)
 			},
 		})
 		if err != nil {
@@ -131,7 +116,14 @@ func main() {
 	}
 	if config.Resource == "secrets" || config.Resource == "both" {
 		secretsInformer := informerFactory.Core().V1().Secrets().Informer()
-		_, err = secretsInformer.AddEventHandler(&secretsHandler{})
+		_, err = secretsInformer.AddEventHandler(&secretsHandler{
+			folder:           config.Folder,
+			defaultFileMode:  config.DefaultFileMode,
+			folderAnnotation: config.FolderAnnotation,
+			callback: func() {
+				runCallback(config.Req)
+			},
+		})
 		if err != nil {
 			panic(fmt.Sprintf("unable to add event handler: %s", err))
 		}
