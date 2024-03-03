@@ -20,23 +20,19 @@ import (
 )
 
 type Config struct {
-	Label            string   `envconfig:"LABEL" required:"true"`
-	LabelValue       string   `envconfig:"LABEL_VALUE"`
-	Folder           string   `envconfig:"FOLDER" required:"true"`
-	FolderAnnotation string   `envconfig:"FOLDER_ANNOTATION" default:"k8s-sidecar-target-directory"`
-	Namespace        []string `envconfig:"NAMESPACE" default:""`
-	Resource         string   `envconfig:"RESOURCE" default:"configmap"`
-	//Method                 string   `envconfig:"METHOD"`
-	//SleepTime              string   `envconfig:"SLEEP_TIME" default:"60"`
-	Req ReqConfig
-	//Script                 string   `envconfig:"SCRIPT"`
-	//ErrorThrottleSleep     string   `envconfig:"ERROR_THROTTLE_SLEEP" default:"5"`
-	//UniqueFilenames        string   `envconfig:"UNIQUE_FILENAMES" default:"false"`
+	Label              string   `envconfig:"LABEL" required:"true"`
+	LabelValue         string   `envconfig:"LABEL_VALUE"`
+	Folder             string   `envconfig:"FOLDER" required:"true"`
+	FolderAnnotation   string   `envconfig:"FOLDER_ANNOTATION" default:"k8s-sidecar-target-directory"`
+	Namespace          []string `envconfig:"NAMESPACE" default:""`
+	Resource           string   `envconfig:"RESOURCE" default:"configmap"`
+	Req                ReqConfig
 	DefaultFileMode    uint32 `envconfig:"DEFAULT_FILE_MODE" default:"0755"`
 	Kubeconfig         string `envconfig:"KUBECONFIG"`
 	Enable5Xx          string `envconfig:"ENABLE_5XX"`
 	WatchServerTimeout int64  `envconfig:"WATCH_SERVER_TIMEOUT" default:"60"`
 	WatchClientTimeout int64  `envconfig:"WATCH_CLIENT_TIMEOUT" default:"66"`
+	MetricsServerPort  uint   `envconfig:"METRICS_SERVER_PORT" default:"8089"`
 }
 
 func main() {
@@ -77,6 +73,11 @@ func main() {
 	_, err = kubeClient.ServerVersion()
 	if err != nil {
 		panic(fmt.Sprintf("unable to retrieve kubernetes version: %s", err))
+	}
+
+	server, err := startMetricsServer(config.MetricsServerPort)
+	if err != nil {
+		panic(fmt.Sprintf("failed to start metrics server: %s", err))
 	}
 
 	sharedInformerOpts := make([]informers.SharedInformerOption, 0, len(config.Namespace)+1)
@@ -135,5 +136,6 @@ func main() {
 	case <-ctx.Done():
 	}
 	informerFactory.Shutdown()
+	server.Close()
 	log.Printf("waited to all threads to end")
 }
