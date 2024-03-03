@@ -2,9 +2,11 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"time"
 
@@ -20,16 +22,21 @@ type ReqConfig struct {
 	Timeout            string  `envconfig:"REQ_TIMEOUT" default:"10"`
 	Username           string  `envconfig:"REQ_USERNAME"`
 	Password           string  `envconfig:"REQ_PASSWORD"`
-	BasicAuthEncoding  string  `envconfig:"REQ_BASIC_AUTH_ENCODING" default:"latin1"`
 	SkipTlsVerify      bool    `envconfig:"REQ_SKIP_TLS_VERIFY" default:"false"`
 }
 
 func runCallback(reqConfig ReqConfig) {
 	client := &http.Client{}
+	dialer := net.Dialer{}
 	if reqConfig.SkipTlsVerify {
-		client.Transport = &http.Transport{TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		}}
+		client.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				return dialer.DialContext(ctx, "tcp4", addr)
+			},
+		}
 	}
 
 	req, err := http.NewRequest(reqConfig.Method, reqConfig.Url, bytes.NewBuffer(reqConfig.Payload))
