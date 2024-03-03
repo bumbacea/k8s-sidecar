@@ -21,20 +21,21 @@ import (
 )
 
 type Config struct {
-	Label              string   `envconfig:"LABEL" required:"true"`
-	LabelValue         string   `envconfig:"LABEL_VALUE"`
-	Folder             string   `envconfig:"FOLDER" required:"true"`
-	FolderAnnotation   string   `envconfig:"FOLDER_ANNOTATION" default:"k8s-sidecar-target-directory"`
-	Namespace          []string `envconfig:"NAMESPACE" default:""`
-	Resource           string   `envconfig:"RESOURCE" default:"configmap"`
-	Req                ReqConfig
-	UniqueFilenames    bool   `envconfig:"UNIQUE_FILENAMES" default:"false"`
-	DefaultFileMode    uint32 `envconfig:"DEFAULT_FILE_MODE" default:"0755"`
-	Kubeconfig         string `envconfig:"KUBECONFIG"`
-	Enable5Xx          string `envconfig:"ENABLE_5XX"`
-	WatchServerTimeout int64  `envconfig:"WATCH_SERVER_TIMEOUT" default:"60"`
-	WatchClientTimeout int64  `envconfig:"WATCH_CLIENT_TIMEOUT" default:"66"`
-	MetricsServerPort  uint   `envconfig:"METRICS_SERVER_PORT" default:"8089"`
+	Label               string   `envconfig:"LABEL" required:"true"`
+	LabelValue          string   `envconfig:"LABEL_VALUE"`
+	Folder              string   `envconfig:"FOLDER" required:"true"`
+	FolderAnnotation    string   `envconfig:"FOLDER_ANNOTATION" default:"k8s-sidecar-target-directory"`
+	Namespace           []string `envconfig:"NAMESPACE" default:""`
+	Resource            string   `envconfig:"RESOURCE" default:"configmap"`
+	Req                 ReqConfig
+	UniqueFilenames     bool   `envconfig:"UNIQUE_FILENAMES" default:"false"`
+	DefaultFileMode     uint32 `envconfig:"DEFAULT_FILE_MODE" default:"0755"`
+	Kubeconfig          string `envconfig:"KUBECONFIG"`
+	Enable5Xx           string `envconfig:"ENABLE_5XX"`
+	WatchServerTimeout  int64  `envconfig:"WATCH_SERVER_TIMEOUT" default:"60"`
+	WatchClientTimeout  int64  `envconfig:"WATCH_CLIENT_TIMEOUT" default:"66"`
+	MetricsServerPort   uint   `envconfig:"METRICS_SERVER_PORT" default:"8089"`
+	EnableMetricsServer bool   `envconfig:"METRICS_SERVER_ENABLED" default:"false"`
 }
 
 func main() {
@@ -77,9 +78,12 @@ func main() {
 		panic(fmt.Sprintf("unable to retrieve kubernetes version: %s", err))
 	}
 
-	server, err := startMetricsServer(config.MetricsServerPort)
-	if err != nil {
-		panic(fmt.Sprintf("failed to start metrics server: %s", err))
+	if config.EnableMetricsServer {
+		server, err := startMetricsServer(config.MetricsServerPort)
+		if err != nil {
+			panic(fmt.Sprintf("failed to start metrics server: %s", err))
+		}
+		server.Close()
 	}
 
 	sharedInformerOpts := make([]informers.SharedInformerOption, 0, len(config.Namespace)+1)
@@ -127,6 +131,5 @@ func main() {
 	case <-ctx.Done():
 	}
 	informerFactory.Shutdown()
-	server.Close()
 	log.Printf("waited to all threads to end")
 }
