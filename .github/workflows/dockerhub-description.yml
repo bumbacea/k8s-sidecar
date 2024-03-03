@@ -15,7 +15,7 @@ jobs:
         uses: peter-evans/dockerhub-description@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: bumbacea/k8s-sidecar
           short-description: ${{ github.event.repository.description }}
           enable-url-completion: true
