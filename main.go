@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/bumbacea/k8s-sidecar/handlers"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/informers"
@@ -27,6 +28,7 @@ type Config struct {
 	Namespace          []string `envconfig:"NAMESPACE" default:""`
 	Resource           string   `envconfig:"RESOURCE" default:"configmap"`
 	Req                ReqConfig
+	UniqueFilenames    bool   `envconfig:"UNIQUE_FILENAMES" default:"false"`
 	DefaultFileMode    uint32 `envconfig:"DEFAULT_FILE_MODE" default:"0755"`
 	Kubeconfig         string `envconfig:"KUBECONFIG"`
 	Enable5Xx          string `envconfig:"ENABLE_5XX"`
@@ -96,6 +98,9 @@ func main() {
 		log.Printf("Watching for labels: %s", options.LabelSelector)
 	}))
 
+	globalHandler := handlers.NewGenericHandlerImpl(config.Folder, func() {
+		runCallback(config.Req)
+	}, config.DefaultFileMode, config.FolderAnnotation, config.UniqueFilenames)
 	informerFactory := informers.NewSharedInformerFactoryWithOptions(
 		kubeClient,
 		time.Second*time.Duration(config.WatchServerTimeout),
@@ -103,28 +108,14 @@ func main() {
 	)
 	configMapInformer := informerFactory.Core().V1().ConfigMaps().Informer()
 	if config.Resource == "configmap" || config.Resource == "both" {
-		_, err = configMapInformer.AddEventHandler(&cmHandler{
-			folder:           config.Folder,
-			defaultFileMode:  config.DefaultFileMode,
-			folderAnnotation: config.FolderAnnotation,
-			callback: func() {
-				runCallback(config.Req)
-			},
-		})
+		_, err = configMapInformer.AddEventHandler(handlers.NewCmHandler(globalHandler))
 		if err != nil {
 			panic(fmt.Sprintf("unable to add event handler: %s", err))
 		}
 	}
 	if config.Resource == "secrets" || config.Resource == "both" {
 		secretsInformer := informerFactory.Core().V1().Secrets().Informer()
-		_, err = secretsInformer.AddEventHandler(&secretsHandler{
-			folder:           config.Folder,
-			defaultFileMode:  config.DefaultFileMode,
-			folderAnnotation: config.FolderAnnotation,
-			callback: func() {
-				runCallback(config.Req)
-			},
-		})
+		_, err = secretsInformer.AddEventHandler(handlers.NewSecretsHandler(globalHandler))
 		if err != nil {
 			panic(fmt.Sprintf("unable to add event handler: %s", err))
 		}
