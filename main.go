@@ -10,6 +10,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/utils/strings/slices"
 	"log"
 	"os"
 	"os/signal"
@@ -29,7 +30,7 @@ type Config struct {
 	Resource            string   `envconfig:"RESOURCE" default:"configmap"`
 	Req                 ReqConfig
 	UniqueFilenames     bool   `envconfig:"UNIQUE_FILENAMES" default:"false"`
-	DefaultFileMode     uint32 `envconfig:"DEFAULT_FILE_MODE" default:"0755"`
+	DefaultFileMode     string `envconfig:"DEFAULT_FILE_MODE" default:"0755"`
 	Kubeconfig          string `envconfig:"KUBECONFIG"`
 	Enable5Xx           string `envconfig:"ENABLE_5XX"`
 	WatchServerTimeout  int64  `envconfig:"WATCH_SERVER_TIMEOUT" default:"60"`
@@ -56,7 +57,7 @@ func main() {
 	}
 	log.Printf("config: %+v", config)
 
-	err = os.MkdirAll(config.Folder, os.FileMode(config.DefaultFileMode))
+	err = os.MkdirAll(config.Folder, os.FileMode(0755))
 	if err != nil {
 		panic(fmt.Sprintf("unable to create folder: %s", err))
 	}
@@ -86,6 +87,9 @@ func main() {
 		server.Close()
 	}
 
+	if slices.Equal(config.Namespace, []string{"ALL"}) {
+		config.Namespace = []string{}
+	}
 	sharedInformerOpts := make([]informers.SharedInformerOption, 0, len(config.Namespace)+1)
 	for _, ns := range config.Namespace {
 		sharedInformerOpts = append(sharedInformerOpts, informers.WithNamespace(ns))
