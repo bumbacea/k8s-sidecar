@@ -1,7 +1,5 @@
 
 
-[![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/bumbacea/k8s-sidecar?style=flat)](https://github.com/bumbacea/k8s-sidecar/releases)
-[![Release](https://github.com/bumbacea/k8s-sidecar/actions/workflows/release.yaml/badge.svg)](https://github.com/bumbacea/k8s-sidecar/actions/workflows/release.yaml)
 [![Docker Pulls](https://img.shields.io/docker/pulls/bumbacea/k8s-sidecar.svg?style=flat)](https://hub.docker.com/r/bumbacea/k8s-sidecar/)
 ![Docker Image Size (latest semver)](https://img.shields.io/docker/image-size/bumbacea/k8s-sidecar)
 # What?

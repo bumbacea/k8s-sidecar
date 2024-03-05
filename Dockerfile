@@ -1,4 +1,4 @@
-FROM golang:1.22-bookworm as builder
+FROM golang:1.22-alpine3.19 as builder
 
 # Create and change to the app directory.
 WORKDIR /app
@@ -15,13 +15,7 @@ COPY . ./
 # Build the binary.
 RUN go build -v -o server
 
-# Use the official Debian slim image for a lean production container.
-# https://hub.docker.com/_/debian
-# https://docs.docker.com/develop/develop-images/multistage-build/#use-multi-stage-builds
-FROM debian:bookworm-slim
-RUN set -x && apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    ca-certificates && \
-    rm -rf /var/lib/apt/lists/*
+FROM alpine:3.19
 
 # Copy the binary to the production image from the builder stage.
 COPY --from=builder /app/server /app/server
