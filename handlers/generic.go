@@ -5,10 +5,12 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"io/fs"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 )
 
@@ -16,7 +18,7 @@ func (g *genericHandlerImpl) writeData(path string, data []byte) (bool, error) {
 	g.sm.Lock()
 	defer g.sm.Unlock()
 	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
-		return true, os.WriteFile(path, data, os.FileMode(g.defaultFileMode))
+		return true, os.WriteFile(path, data, g.defaultFileMode)
 	}
 	current, err := os.ReadFile(path)
 	if err != nil {
@@ -25,23 +27,27 @@ func (g *genericHandlerImpl) writeData(path string, data []byte) (bool, error) {
 	if bytes.Equal(current, data) {
 		return false, nil
 	}
-	return true, os.WriteFile(path, data, os.FileMode(g.defaultFileMode))
+	return true, os.WriteFile(path, data, g.defaultFileMode)
 }
 
 type genericHandlerImpl struct {
 	folder           string
 	callback         func()
-	defaultFileMode  uint32
+	defaultFileMode  fs.FileMode
 	folderAnnotation string
 	uniqFilenames    bool
 	sm               *sync.Mutex
 }
 
-func NewGenericHandlerImpl(folder string, callback func(), defaultFileMode uint32, folderAnnotation string, uniqFilenames bool) GenericHandler {
+func NewGenericHandlerImpl(folder string, callback func(), defaultFileMode string, folderAnnotation string, uniqFilenames bool) GenericHandler {
+	fm, err := strconv.ParseUint(defaultFileMode, 8, 32)
+	if err != nil {
+		panic(fmt.Sprintf("unable to parse file mode: %s", err))
+	}
 	return &genericHandlerImpl{
 		folder:           folder,
 		callback:         callback,
-		defaultFileMode:  defaultFileMode,
+		defaultFileMode:  fs.FileMode(fm),
 		folderAnnotation: folderAnnotation,
 		uniqFilenames:    uniqFilenames,
 		sm:               &sync.Mutex{},
@@ -67,7 +73,7 @@ func (g *genericHandlerImpl) OnDelete(meta v1.ObjectMeta, data map[string]string
 		if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
 			e := os.Remove(path)
 			if e != nil {
-				log.Printf("failed to delete file %s: %s", err)
+				log.Printf("failed to delete file %s: %s", path, err)
 				continue
 			}
 			deletedFiles = true
@@ -78,7 +84,7 @@ func (g *genericHandlerImpl) OnDelete(meta v1.ObjectMeta, data map[string]string
 		if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
 			e := os.Remove(path)
 			if e != nil {
-				log.Printf("failed to delete file %s: %s", err)
+				log.Printf("failed to delete file %s: %s", path, err)
 				continue
 			}
 			deletedFiles = true
@@ -89,7 +95,7 @@ func (g *genericHandlerImpl) OnDelete(meta v1.ObjectMeta, data map[string]string
 	}
 }
 
-func (g *genericHandlerImpl) processData(objectMeta v1.ObjectMeta, data map[string]string, dataBinary map[string][]byte, isInInitialList bool) bool {
+func (g *genericHandlerImpl) processData(objectMeta v1.ObjectMeta, data map[string]string, dataBinary map[string][]byte, _ bool) bool {
 	log.Printf("Handling cm %s/%s", objectMeta.Namespace, objectMeta.Name)
 	filesChanged := false
 	for key, value := range data {
@@ -106,12 +112,12 @@ func (g *genericHandlerImpl) processData(objectMeta v1.ObjectMeta, data map[stri
 	for key, value := range dataBinary {
 		decoded, err := base64.StdEncoding.DecodeString(string(value))
 		if err != nil {
-			fmt.Println("Error decoding base64: ", err)
+			log.Println("Error decoding base64: ", err)
 			continue
 		}
 		changed, err := g.writeData(g.computePath(objectMeta, key), decoded)
 		if err != nil {
-			fmt.Println("Error writing file: ", err)
+			log.Println("Error writing file: ", err)
 			continue
 		}
 		if changed == true {
