@@ -106,9 +106,17 @@ func main() {
 		log.Printf("Watching for labels: %s", options.LabelSelector)
 	}))
 
-	globalHandler := handlers.NewGenericHandlerImpl(config.Folder, func() {
-		runCallback(config.Req)
-	}, config.DefaultFileMode, config.FolderAnnotation, config.UniqueFilenames)
+	globalHandler, err := handlers.NewGenericHandlerImpl(
+		config.Folder, func() {
+			runCallback(config.Req)
+		},
+		config.DefaultFileMode,
+		config.FolderAnnotation,
+		config.UniqueFilenames,
+	)
+	if err != nil {
+		panic(fmt.Sprintf("failed to init handler: %s", err))
+	}
 	informerFactory := informers.NewSharedInformerFactoryWithOptions(
 		kubeClient,
 		time.Second*time.Duration(config.WatchServerTimeout),

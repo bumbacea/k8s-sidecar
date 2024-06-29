@@ -49,7 +49,7 @@ func TestGenericHandlerImpl_OnAdd(tt *testing.T) {
 			},
 		},
 	}
-	handler := NewGenericHandlerImpl(
+	handler, err := NewGenericHandlerImpl(
 		"/tmp",
 		func() {
 
@@ -58,7 +58,7 @@ func TestGenericHandlerImpl_OnAdd(tt *testing.T) {
 		"some-annotation",
 		false,
 	)
-
+	assert.Nil(tt, err, "failed to init handler")
 	for s, scenario := range scenarios {
 		tt.Run(s, func(t *testing.T) {
 			dest, err := os.MkdirTemp("", "OnAdd")
