@@ -14,7 +14,7 @@ import (
 )
 
 type ReqConfig struct {
-	Url                string  `envconfig:"REQ_URL" required:"true"`
+	Url                string  `envconfig:"REQ_URL"`
 	Method             string  `envconfig:"REQ_METHOD" default:"GET"`
 	Payload            []byte  `envconfig:"REQ_PAYLOAD"`
 	RetryTotal         uint    `envconfig:"REQ_RETRY_TOTAL" default:"5"`
@@ -26,6 +26,9 @@ type ReqConfig struct {
 }
 
 func runCallback(reqConfig ReqConfig) {
+	if reqConfig.Url == "" {
+		return
+	}
 	client := &http.Client{}
 	dialer := net.Dialer{}
 	if reqConfig.SkipTlsVerify {
