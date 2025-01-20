@@ -15,7 +15,7 @@ COPY . ./
 # Build the binary.
 RUN go build -v -o server
 
-FROM alpine:3.20
+FROM alpine:3.21
 
 # Copy the binary to the production image from the builder stage.
 COPY --from=builder /app/server /app/server
